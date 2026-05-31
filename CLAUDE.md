@@ -12,6 +12,8 @@ The core differentiator vs Runna, Garmin Coach, TrainingPeaks: **the plan change
 
 Target users: recreational athletes (runners, cyclists, triathletes, swimmers) who train seriously but aren't full-time athletes. A key persona is shift workers / night workers whose schedules and recovery patterns are irregular.
 
+This project is also being used as a **learning vehicle for end-to-end data engineering and product analytics** — covering data pipelines, warehousing (Kimball), dbt transformations, and dashboarding.
+
 ---
 
 ## Commercial Model
@@ -87,10 +89,11 @@ Target users: recreational athletes (runners, cyclists, triathletes, swimmers) w
 | Watch | How it works |
 |-------|-------------|
 | Apple Watch | HealthKit (read all data), WorkoutKit iOS 17+ (push structured workouts, get per-step data back) |
-| Garmin | Garmin Connect API (read data, push workouts to calendar) |
-| Coros | Coros API (read data, push workouts to calendar) |
+| Garmin | Garmin Connect API (official developer program — apply at developer.garmin.com) |
+| Coros | Coros API (official partnership — contact developer@coros.com) |
 
 - **Apple Health as universal bridge**: aggregates data from all fitness apps; one connection covers sleep, HRV, workouts from any source
+- **Strategy**: build on Apple Health first (covers Garmin + Coros data via their native apps), apply for official API access once app has traction
 - Bidirectional sync: read from Apple Health/Garmin/Coros; write completed workouts back
 - Deduplication: match by timestamp + sport type within 5 minutes; flag ambiguous duplicates to user; prefer richer data source
 
@@ -119,11 +122,12 @@ Target users: recreational athletes (runners, cyclists, triathletes, swimmers) w
 
 ## Screens (Mockup built at `mockup/index.html`)
 
-Dark theme (`#1a1a1a` background), green accent `#00E5A0`, iPhone-style phone frames.
+Dark theme (`#0C0C0E` background), green accent `#00D68F`, Dynamic Island iPhone frames.
+Preview at `http://localhost:3131` (run `npx serve mockup -p 3131`).
 
-1. **Home / Today** — Recovery score, HRV/RHR/sleep pills, AI plan adjustment banner (keep/restore), this week's sessions
-2. **Recovery & Metrics** — HRV bar chart, sleep, RHR, training load (Fitness/Fatigue/Form bars), weekly strain, time tabs (7D/1M/3M/1Y)
-3. **Today's Session** — Interval structure with colour-coded dots, "Start on Apple Watch" CTA, AI rationale card
+1. **Home / Today** — Recovery ring score, HRV/RHR/sleep vitals, AI plan adjustment banner (keep/restore), this week's sessions
+2. **Recovery & Metrics** — SVG HRV line chart, sleep + RHR cards, training load bars (CTL/ATL/TSB), weekly strain bars, time tabs (7D/1M/3M/1Y)
+3. **Today's Session** — Session hero card, interval structure with colour-coded bars, "Start on Apple Watch" CTA, AI rationale card
 4. **AI Coach Chat** — Conversational UI, AI explains changes, user asks about pace targets, AI gives specific HR/pace ranges
 5. **Activity Log** — Filter tabs (All/Running/Strength/Cycling), workout entries with exercise breakdown, PR badges, planned vs actual
 
@@ -131,18 +135,86 @@ Bottom navigation: Home · Metrics · Plan · Coach · Profile
 
 ---
 
-## Architecture Plan (not yet built)
+## Full Architecture
 
-- **One backend, two frontends**: FastAPI backend → iOS app (Swift) + Web app (React/Next.js)
-- **Web companion**: deeper metrics, full calendar view, for users who want desktop access
-- **iOS data display**: 7D → 1M → 3M → 1Y; all-time data available on web only
+### Application Stack
+- **One backend, two frontends**: FastAPI (Python) backend → iOS app (Swift/SwiftUI) + Web app (React/Next.js)
+- **Web companion**: deeper metrics, full calendar view, all-time data
+- **iOS data display**: 7D → 1M → 3M → 1Y; all-time on web only
 
-### Intervals.icu Integration (considered)
-- Universal workout delivery layer
-- Official REST API
-- CTL/ATL/TSB calculations
-- Syncs to Garmin/Polar/Apple Health
-- Workout push → Apple Watch via Watchletic
+### Data Stack (free/open source, on-premise)
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| Operational DB | PostgreSQL | App database — users, sessions, vitals, plans |
+| Transformation | dbt Core (CLI) | ETL layer — staging → intermediate → marts |
+| Analytical DB | DuckDB (later) | Kimball star schema for heavy analytics |
+| Scheduling | Cron jobs (now) → Airflow (later) | Pipeline orchestration |
+| Dashboards | Metabase (self-hosted) | Internal analytics and metrics |
+| App backend | FastAPI | Serves data to iOS and web |
+
+### Data Pipeline Architecture
+
+```
+Data Sources
+├── Apple HealthKit (HRV, sleep, RHR, SpO2, steps)
+├── Garmin Connect API
+├── Coros API
+└── App events (user actions, plan changes, workout logs)
+        ↓
+   [EXTRACT]
+   Python scripts — pull raw data, land in PostgreSQL raw schema
+        ↓
+   [TRANSFORM — dbt Core]
+   staging models     → clean, rename, cast types, deduplicate
+   intermediate models → HRV baseline, CTL/ATL/TSB, sleep scoring
+   mart models        → Kimball fact + dimension tables
+        ↓
+   [LOAD]
+   PostgreSQL marts schema (now) → DuckDB (when data grows)
+        ↓
+   [SERVE]
+   FastAPI → iOS app + web
+   Metabase → internal dashboards
+```
+
+### dbt Layer Structure
+
+```
+raw schema (PostgreSQL)
+└── landed by Python ingestion scripts
+
+staging (dbt)
+├── stg_healthkit_vitals.sql
+├── stg_garmin_activities.sql
+└── stg_coros_activities.sql
+
+intermediate (dbt)
+├── int_hrv_baseline.sql         (rolling 30-day avg per user)
+├── int_training_load.sql        (CTL/ATL/TSB calculations)
+└── int_sleep_score.sql          (sleep quality scoring)
+
+marts — Kimball star schema (dbt)
+├── fact_daily_vitals.sql
+├── fact_workouts.sql
+├── fact_training_load.sql
+├── fact_plan_adherence.sql      (planned vs actual)
+├── dim_user.sql
+├── dim_date.sql
+├── dim_sport.sql
+├── dim_workout_type.sql
+└── dim_watch.sql
+```
+
+### Mapping to Familiar Concepts (Microsoft Fabric background)
+
+| Fabric / Power BI | Athleap Equivalent |
+|-------------------|-------------------|
+| Power BI Dataflows (Power Query) | dbt models (.sql files) |
+| Fabric Warehouse schemas | dbt layers (staging / intermediate / marts) |
+| Scheduled refresh | Cron job running `dbt build` |
+| PBI datamodel relationships | dbt schema.yml |
+| Power BI reports | Metabase dashboards |
 
 ---
 
@@ -156,12 +228,17 @@ Bottom navigation: Home · Metrics · Plan · Coach · Profile
 
 ## Current Status
 
-- Product vision: defined
-- README: written and pushed to GitHub
-- Mockup: 5 screens built at `mockup/index.html`
-- Coaching system: being validated on a live athlete (the founder) before iOS build begins
-- iOS app: not yet started
-- Backend: not yet started
+| Area | Status |
+|------|--------|
+| Product vision | Defined |
+| UI Mockup | 5 screens built (`mockup/index.html`) |
+| README | Written and pushed to GitHub |
+| Data architecture | Designed — PostgreSQL + dbt + DuckDB + Metabase |
+| Database schema | Not yet written |
+| dbt project | Not yet set up |
+| iOS app | Not yet started |
+| FastAPI backend | Not yet started |
+| Coaching system | Being validated on live athlete (founder) |
 
 ## Repo
 `https://github.com/ameyamarathe/athleap-app`
@@ -170,8 +247,11 @@ Bottom navigation: Home · Metrics · Plan · Coach · Profile
 
 ## What to Work On Next
 
-When resuming, likely next steps are:
-1. Define the technical architecture in more detail (FastAPI backend structure, Swift iOS project setup)
-2. Set up the iOS Xcode project skeleton
-3. Define the database schema (users, training plans, daily vitals, sessions, adjustments)
-4. Build the HealthKit data ingestion layer first (most critical dependency)
+**Immediate next steps (in order):**
+1. Design PostgreSQL raw schema (every table, column, index)
+2. Design Kimball star schema for marts layer
+3. Set up dbt Core project structure
+4. Write dbt staging + intermediate + mart models
+5. Set up FastAPI backend skeleton
+6. Build HealthKit data ingestion layer (most critical app dependency)
+7. Set up iOS Xcode project (Swift/SwiftUI)

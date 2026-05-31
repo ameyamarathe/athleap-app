@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Athleap — Database Schema ERD</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0A0A0C;
+  --surface: #111114;
+  --surface2: #18181C;
+  --border: rgba(255,255,255,0.07);
+  --text: #E8E8EC;
+  --text-2: #7A7A85;
+  --text-3: #3A3A42;
+  --green: #00D68F;
+  --blue: #4B8EF5;
+  --orange: #FF9340;
+  --purple: #A855F7;
+  --red: #EF4444;
+  --schema-app: #00D68F;
+  --schema-raw: #FF9340;
+  --schema-audit: #A855F7;
+}
+
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: auto;
+}
+
+.page-header {
+  padding: 32px 40px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.title { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+.title span { color: var(--green); }
+.subtitle { font-size: 12px; color: var(--text-3); margin-top: 4px; font-weight: 400; }
+
+.legend {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); font-weight: 500; }
+.leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+.canvas {
+  padding: 32px 40px 60px;
+  position: relative;
+}
+
+/* ── SVG connectors layer ── */
+.svg-layer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.erd-grid {
+  display: grid;
+  grid-template-columns: 280px 280px 280px 280px 280px;
+  grid-template-rows: auto;
+  gap: 20px;
+  position: relative;
+  width: fit-content;
+}
+
+/* ── TABLE CARD ── */
+.table-card {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--surface);
+  position: relative;
+}
+
+.table-header {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.table-schema-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tag-app   { background: rgba(0,214,143,0.12); color: var(--schema-app); }
+.tag-raw   { background: rgba(255,147,64,0.12); color: var(--schema-raw); }
+.tag-audit { background: rgba(168,85,247,0.12); color: var(--schema-audit); }
+
+.table-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  flex: 1;
+}
+
+.table-body { padding: 6px 0; }
+
+.col-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  transition: background 0.1s;
+}
+.col-row:hover { background: rgba(255,255,255,0.03); }
+.col-row.pk { background: rgba(0,214,143,0.04); }
+.col-row.fk { background: rgba(75,142,245,0.04); }
+
+.col-badge {
+  font-size: 9px;
+  font-weight: 800;
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+  padding: 1px 0;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+.badge-pk { background: rgba(0,214,143,0.2); color: var(--green); }
+.badge-fk { background: rgba(75,142,245,0.2); color: var(--blue); }
+.badge-empty { width: 22px; }
+
+.col-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+.col-name.pk-name { color: var(--green); font-weight: 600; }
+.col-name.fk-name { color: var(--blue); }
+
+.col-type {
+  font-size: 10px;
+  color: var(--text-3);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-weight: 500;
+}
+
+.col-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 14px;
+}
+
+.col-more {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 6px 14px 8px;
+  font-weight: 400;
+}
+
+/* Schema section labels */
+.schema-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.schema-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="title">ath<span>leap</span> — Database Schema ERD</div>
+    <div class="subtitle">PostgreSQL · 3 schemas · 16 tables · v1.0.0</div>
+  </div>
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--schema-app)"></div>app schema</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--schema-raw)"></div>raw schema</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--schema-audit)"></div>audit schema</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>PK</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>FK</div>
+  </div>
+</div>
+
+<div class="canvas">
+
+  <!-- ═══ ROW 1: USERS GROUP ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--schema-app)">▎</span> Users & Auth
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div class="erd-grid" style="margin-bottom:32px;">
+
+    <!-- users -->
+    <div class="table-card" id="t-users">
+      <div class="table-header">
+        <div class="table-name">users</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">email</span><span class="col-type">TEXT UNIQUE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">display_name</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">date_of_birth</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">timezone</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">subscription_tier</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">trial_started_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">trial_ends_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_active</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">created_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">updated_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+    <!-- user_fitness_profiles -->
+    <div class="table-card" id="t-profiles">
+      <div class="table-header">
+        <div class="table-name">user_fitness_profiles</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">profile_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">primary_sport</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">secondary_sports</span><span class="col-type">TEXT[]</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">fitness_level</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">ftp_watts</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">recent_5k_time_sec</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">strength_level</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">available_equipment</span><span class="col-type">TEXT[]</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_shift_worker</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-more">+ 6 more columns</div>
+      </div>
+    </div>
+
+    <!-- user_schedule_preferences -->
+    <div class="table-card" id="t-schedule">
+      <div class="table-header">
+        <div class="table-name">user_schedule_preferences</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">pref_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">day_of_week</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">preferred_time</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_available</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">notes</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">created_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+    <!-- user_watch_connections -->
+    <div class="table-card" id="t-watches">
+      <div class="table-header">
+        <div class="table-name">user_watch_connections</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">connection_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">source</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_connected</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">access_token</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">refresh_token</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">token_expires_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">last_synced_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">sync_status</span><span class="col-type">TEXT</span></div>
+      </div>
+    </div>
+
+    <!-- daily_metrics -->
+    <div class="table-card" id="t-daily-metrics">
+      <div class="table-header">
+        <div class="table-name">daily_metrics</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">metric_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">metric_date</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">hrv_rmssd</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">resting_hr</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">sleep_total_min</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">hrv_baseline_30d</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">ctl</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">atl</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">tsb</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">recovery_score</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">recovery_status</span><span class="col-type">TEXT</span></div>
+        <div class="col-more">+ 5 more columns</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ROW 2: RAW SCHEMA ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--schema-raw)">▎</span> Raw Schema — Data Landing Zone
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div class="erd-grid" style="margin-bottom:32px;">
+
+    <!-- raw.daily_vitals -->
+    <div class="table-card" id="t-raw-vitals">
+      <div class="table-header">
+        <div class="table-name">daily_vitals</div>
+        <div class="table-schema-tag tag-raw">raw</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">raw_vital_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">source</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">metric_date</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">metric_type</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">value</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">unit</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">collected_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">ingested_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+    <!-- raw.sleep_sessions -->
+    <div class="table-card" id="t-raw-sleep">
+      <div class="table-header">
+        <div class="table-name">sleep_sessions</div>
+        <div class="table-schema-tag tag-raw">raw</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">raw_sleep_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">source</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">sleep_date</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">bedtime</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">wake_time</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">total_sleep_seconds</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">deep_sleep_seconds</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">rem_sleep_seconds</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">sleep_score</span><span class="col-type">SMALLINT</span></div>
+      </div>
+    </div>
+
+    <!-- raw.activities -->
+    <div class="table-card" id="t-raw-activities" style="grid-column: span 2;">
+      <div class="table-header">
+        <div class="table-name">activities</div>
+        <div class="table-schema-tag tag-raw">raw</div>
+      </div>
+      <div class="table-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+        <div>
+          <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">raw_activity_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+          <div class="col-divider"></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">source</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">external_id</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">activity_type</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">started_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">ended_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        </div>
+        <div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">duration_seconds</span><span class="col-type">INTEGER</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">distance_metres</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">avg_heart_rate</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">avg_power_watts</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">tss</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">raw_payload</span><span class="col-type">JSONB</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">ingested_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ROW 3: TRAINING PLANS ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--schema-app)">▎</span> Training Plans & Sessions
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div class="erd-grid" style="margin-bottom:32px;">
+
+    <!-- training_plans -->
+    <div class="table-card" id="t-plans">
+      <div class="table-header">
+        <div class="table-name">training_plans</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">plan_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">week_start_date</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">week_end_date</span><span class="col-type">DATE</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">plan_status</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">generated_by</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">ai_model_version</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">generation_notes</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">total_planned_tss</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">total_planned_hours</span><span class="col-type">NUMERIC</span></div>
+      </div>
+    </div>
+
+    <!-- planned_sessions -->
+    <div class="table-card" id="t-sessions" style="grid-column: span 2;">
+      <div class="table-header">
+        <div class="table-name">planned_sessions</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+        <div>
+          <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">session_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">plan_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">original_session_id</span><span class="col-type">UUID</span></div>
+          <div class="col-divider"></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">scheduled_date</span><span class="col-type">DATE</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">session_type</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">sport</span><span class="col-type">TEXT</span></div>
+        </div>
+        <div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">title</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">planned_duration_min</span><span class="col-type">INTEGER</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">planned_distance_km</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">target_hr_zone</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">ai_rationale</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_modified</span><span class="col-type">BOOLEAN</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">session_status</span><span class="col-type">TEXT</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- planned_intervals -->
+    <div class="table-card" id="t-intervals">
+      <div class="table-header">
+        <div class="table-name">planned_intervals</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">interval_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">session_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">step_order</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">step_type</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">duration_seconds</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">target_pace_sec_per_km</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">target_hr_zone</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">target_power_low</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">target_power_high</span><span class="col-type">SMALLINT</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ROW 4: WORKOUTS ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--schema-app)">▎</span> Completed Workouts & Strength Logging
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div class="erd-grid" style="margin-bottom:32px;">
+
+    <!-- completed_workouts -->
+    <div class="table-card" id="t-workouts" style="grid-column: span 2;">
+      <div class="table-header">
+        <div class="table-name">completed_workouts</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+        <div>
+          <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">workout_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">planned_session_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">raw_activity_id</span><span class="col-type">UUID</span></div>
+          <div class="col-divider"></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">source</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">sport</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">started_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        </div>
+        <div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">duration_seconds</span><span class="col-type">INTEGER</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">distance_metres</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">avg_heart_rate</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">avg_power_watts</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">tss</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">perceived_effort</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_ad_hoc</span><span class="col-type">BOOLEAN</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- exercises -->
+    <div class="table-card" id="t-exercises">
+      <div class="table-header">
+        <div class="table-name">exercises</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">exercise_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">created_by_user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">name</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">muscle_groups</span><span class="col-type">TEXT[]</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">equipment</span><span class="col-type">TEXT[]</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">exercise_type</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_compound</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_custom</span><span class="col-type">BOOLEAN</span></div>
+      </div>
+    </div>
+
+    <!-- workout_strength_sets -->
+    <div class="table-card" id="t-sets">
+      <div class="table-header">
+        <div class="table-name">workout_strength_sets</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">set_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">workout_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">exercise_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">set_number</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">reps_completed</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">weight_kg</span><span class="col-type">NUMERIC</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">is_warmup_set</span><span class="col-type">BOOLEAN</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">rpe</span><span class="col-type">SMALLINT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">logged_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ROW 5: AI & AUDIT ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--schema-app)">▎</span> AI Coach &nbsp;&nbsp;
+    <span style="color:var(--schema-audit)">▎</span> Audit Trail
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div class="erd-grid" style="margin-bottom:32px;">
+
+    <!-- coach_threads -->
+    <div class="table-card" id="t-threads">
+      <div class="table-header">
+        <div class="table-name">coach_threads</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">thread_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">started_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">last_message_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+    <!-- coach_messages -->
+    <div class="table-card" id="t-messages">
+      <div class="table-header">
+        <div class="table-name">coach_messages</div>
+        <div class="table-schema-tag tag-app">app</div>
+      </div>
+      <div class="table-body">
+        <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">message_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">thread_id</span><span class="col-type">UUID</span></div>
+        <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+        <div class="col-divider"></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">role</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">content</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">tokens_used</span><span class="col-type">INTEGER</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">model_version</span><span class="col-type">TEXT</span></div>
+        <div class="col-row"><span class="badge-empty"></span><span class="col-name">sent_at</span><span class="col-type">TIMESTAMPTZ</span></div>
+      </div>
+    </div>
+
+    <!-- audit.ai_plan_adjustments -->
+    <div class="table-card" id="t-adjustments" style="grid-column: span 3;">
+      <div class="table-header">
+        <div class="table-name">ai_plan_adjustments</div>
+        <div class="table-schema-tag tag-audit">audit</div>
+      </div>
+      <div class="table-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
+        <div>
+          <div class="col-row pk"><span class="col-badge badge-pk">PK</span><span class="col-name pk-name">adjustment_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">user_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">session_id</span><span class="col-type">UUID</span></div>
+          <div class="col-row fk"><span class="col-badge badge-fk">FK</span><span class="col-name fk-name">plan_id</span><span class="col-type">UUID</span></div>
+          <div class="col-divider"></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">adjustment_date</span><span class="col-type">DATE</span></div>
+        </div>
+        <div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">trigger_type</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">severity</span><span class="col-type">TEXT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">original_value</span><span class="col-type">JSONB</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">adjusted_value</span><span class="col-type">JSONB</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">ai_rationale</span><span class="col-type">TEXT</span></div>
+        </div>
+        <div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">hrv_at_adjustment</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">sleep_hours</span><span class="col-type">NUMERIC</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">recovery_score</span><span class="col-type">SMALLINT</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">user_accepted</span><span class="col-type">BOOLEAN</span></div>
+          <div class="col-row"><span class="badge-empty"></span><span class="col-name">user_override_notes</span><span class="col-type">TEXT</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ RELATIONSHIP SUMMARY ═══ -->
+  <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+    <span style="color:var(--blue)">▎</span> Relationship Summary
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-2);">
+      <div style="font-size:11px;font-weight:700;color:var(--schema-app);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">app schema</div>
+      users → user_fitness_profiles <span style="color:var(--text-3)">(1:1)</span><br>
+      users → user_schedule_preferences <span style="color:var(--text-3)">(1:7)</span><br>
+      users → user_watch_connections <span style="color:var(--text-3)">(1:many)</span><br>
+      users → training_plans <span style="color:var(--text-3)">(1:many)</span><br>
+      training_plans → planned_sessions <span style="color:var(--text-3)">(1:many)</span><br>
+      planned_sessions → planned_intervals <span style="color:var(--text-3)">(1:many)</span><br>
+      planned_sessions → planned_sessions <span style="color:var(--text-3)">(self-ref: modified from)</span><br>
+      users → completed_workouts <span style="color:var(--text-3)">(1:many)</span><br>
+      completed_workouts → workout_strength_sets <span style="color:var(--text-3)">(1:many)</span><br>
+      exercises → workout_strength_sets <span style="color:var(--text-3)">(1:many)</span><br>
+      users → daily_metrics <span style="color:var(--text-3)">(1:many — one per day)</span><br>
+      users → coach_threads → coach_messages <span style="color:var(--text-3)">(1:many:many)</span>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-2);">
+      <div style="font-size:11px;font-weight:700;color:var(--schema-raw);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">raw schema</div>
+      users → raw.daily_vitals <span style="color:var(--text-3)">(1:many)</span><br>
+      users → raw.sleep_sessions <span style="color:var(--text-3)">(1:many)</span><br>
+      users → raw.activities <span style="color:var(--text-3)">(1:many)</span><br>
+      raw.activities → completed_workouts <span style="color:var(--text-3)">(1:1 after match)</span>
+      <br><br>
+      <div style="font-size:11px;font-weight:700;color:var(--schema-audit);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">audit schema</div>
+      users → audit.ai_plan_adjustments <span style="color:var(--text-3)">(1:many)</span><br>
+      planned_sessions → audit.ai_plan_adjustments <span style="color:var(--text-3)">(1:many)</span><br>
+      training_plans → audit.ai_plan_adjustments <span style="color:var(--text-3)">(1:many)</span>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:12px;line-height:1.8;color:var(--text-2);">
+      <div style="font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Data Flow</div>
+      APIs → <span style="color:var(--schema-raw)">raw.*</span> → dbt staging<br>
+      dbt staging → dbt intermediate<br>
+      dbt intermediate → dbt marts<br>
+      dbt marts → <span style="color:var(--schema-app)">app.daily_metrics</span><br>
+      <span style="color:var(--schema-app)">app.daily_metrics</span> → FastAPI → iOS<br><br>
+      <span style="color:var(--text-3)">App never queries raw.* directly.</span><br>
+      <span style="color:var(--text-3)">daily_metrics = pre-computed read layer.</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

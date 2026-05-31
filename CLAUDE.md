@@ -234,7 +234,9 @@ marts — Kimball star schema (dbt)
 | UI Mockup | 5 screens built (`mockup/index.html`) |
 | README | Written and pushed to GitHub |
 | Data architecture | Designed — PostgreSQL + dbt + DuckDB + Metabase |
-| Database schema | Not yet written |
+| Database schema | Written — `database/schema.sql` |
+| ERD diagram | Built — `database/schema-diagram.html` |
+| PostgreSQL instance | Not yet created — needs local install + `CREATE DATABASE athleap` |
 | dbt project | Not yet set up |
 | iOS app | Not yet started |
 | FastAPI backend | Not yet started |
@@ -248,10 +250,34 @@ marts — Kimball star schema (dbt)
 ## What to Work On Next
 
 **Immediate next steps (in order):**
-1. Design PostgreSQL raw schema (every table, column, index)
-2. Design Kimball star schema for marts layer
-3. Set up dbt Core project structure
-4. Write dbt staging + intermediate + mart models
-5. Set up FastAPI backend skeleton
-6. Build HealthKit data ingestion layer (most critical app dependency)
-7. Set up iOS Xcode project (Swift/SwiftUI)
+1. ~~Design PostgreSQL raw schema~~ ✅ Done — `database/schema.sql`
+2. Install PostgreSQL locally (Windows) → `CREATE DATABASE athleap` → run schema.sql
+3. Design Kimball star schema for marts layer
+4. Set up dbt Core project structure
+5. Write dbt staging + intermediate + mart models
+6. Set up FastAPI backend skeleton
+7. Build HealthKit data ingestion layer (most critical app dependency)
+8. Set up iOS Xcode project (Swift/SwiftUI)
+
+---
+
+## Database Setup Instructions
+
+### Local PostgreSQL setup (Windows)
+1. Download and install from: https://www.postgresql.org/download/windows/
+   - Remember the password set for `postgres` user
+   - Default port: 5432
+   - Install pgAdmin (included in installer)
+2. Create the database:
+   ```sql
+   CREATE DATABASE athleap;
+   ```
+3. Run the schema:
+   ```bash
+   psql -U postgres -d athleap -f "T:\athleap-app\database\schema.sql"
+   ```
+   Or open `schema.sql` in pgAdmin Query Tool and run it.
+
+### Files
+- `database/schema.sql` — full DDL (3 schemas, 16 tables, indexes, triggers)
+- `database/schema-diagram.html` — ERD diagram, open in browser at `http://localhost:3132`
